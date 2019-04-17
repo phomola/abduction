@@ -17,7 +17,6 @@ int add_clause(solver* s, veci* lits) {
 int lit_val(solver* s, int i) {
   return s->model.ptr[i] == l_True;
 }
-#cgo LDFLAGS: -L. -lsolver
 */
 import "C"
 

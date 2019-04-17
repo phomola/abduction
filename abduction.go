@@ -5,11 +5,10 @@
 package abduction
 
 import (
+	"abduction/sat" //"github.com/phomola/abduction/sat"
 	"fmt"
 	"sort"
 	"strings"
-
-	"abduction/sat" //"github.com/phomola/abduction/sat"
 )
 
 type Term struct {
