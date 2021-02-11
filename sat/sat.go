@@ -1,7 +1,8 @@
-// Copyright 2018-2019 Petr Homola. All rights reserved.
+// Copyright 2018-2020 Petr Homola. All rights reserved.
 // Use of this source code is governed by the AGPL v3.0
 // that can be found in the LICENSE file.
 
+// This package is a cgo-based wrapper around Minisat.
 package sat
 
 /*
@@ -20,8 +21,7 @@ int lit_val(solver* s, int i) {
 */
 import "C"
 
-//"fmt"
-
+// Solves a satisfiability problem and returns the valuation.
 func Solve(clauses [][]int) map[int]bool {
 	slv := C.solver_new()
 	defer C.solver_delete(slv)
@@ -34,24 +34,24 @@ func Solve(clauses [][]int) map[int]bool {
 			C.veci_push_lit(&lits, C.int(lit))
 		}
 		if C.add_clause(slv, &lits) == 0 {
-			//panic("couldn't add clause")
+			// panic("couldn't add clause")
 			return nil
 		}
 	}
 	C.solver_simplify(slv)
-	//slv.verbosity = 1
+	// slv.verbosity = 1
 	st := C.solver_solve(slv, nil, nil)
 	if st == C.l_True {
-		valuation := map[int]bool{}
+		valuation := make(map[int]bool)
 		for i := 0; i < int(slv.model.size); i++ {
 			valuation[i] = C.lit_val(slv, C.int(i)) != 0
 		}
 		return valuation
-	} else {
-		return nil
 	}
+	return nil
 }
 
+// Uses the provided callback to return all the valuations.
 func SolveAll(clauses [][]int, callback func(map[int]bool)) {
 	for {
 		val := Solve(clauses)

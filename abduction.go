@@ -1,7 +1,8 @@
-// Copyright 2018-2019 Petr Homola. All rights reserved.
+// Copyright 2018-2020 Petr Homola. All rights reserved.
 // Use of this source code is governed by the AGPL v3.0
 // that can be found in the LICENSE file.
 
+// This package provides types and algorithms for solving abductive problems in formal logic.
 package abduction
 
 import (
@@ -12,15 +13,20 @@ import (
 	"github.com/phomola/abduction/sat"
 )
 
+// A first-order term with string-valued arguments.
 type Term struct {
+	// The name of the term
 	Name string
+	// The term's arguments
 	Args []string
 }
 
+// Return a new term. The first argument is the term's name followed by its string-valued arguments.
 func NewTerm(s ...string) *Term {
 	return &Term{s[0], s[1:]}
 }
 
+// Unifies two terms using the provided valuation (as a map).
 func (t1 *Term) Unify(t2 *Term, vars map[string]string, cb func()) {
 	var newVars []string
 	if t1.Name == t2.Name && len(t1.Args) == len(t2.Args) {
@@ -50,6 +56,7 @@ rollback:
 	}
 }
 
+// Implements substitution using the provided valuation.
 func (t *Term) Subst(vars map[string]string) (*Term, bool) {
 	ground := true
 	var args []string
@@ -90,6 +97,7 @@ func (t *Term) SubstNoUids(vars map[string]string) (*Term, bool) {
 	return &Term{t.Name, args}, ground
 }
 
+// Returns a textual representation of the term.
 func (t *Term) String() string {
 	s := t.Name
 	if len(t.Args) > 0 {
@@ -98,8 +106,11 @@ func (t *Term) String() string {
 	return s
 }
 
+// An abductive rule.
 type Rule struct {
+	// The antecedent
 	Ante []*Term
+	// The consequent
 	Cons []*RuleConsTerm
 }
 
@@ -144,10 +155,12 @@ func (r *Rule) backchain(i int, atoms *AtomSet, vars map[string]string, level in
 	}
 }
 
+// Backchains on the rule using the provided atom set and valuation.
 func (r *Rule) Backchain(atoms *AtomSet, vars map[string]string, level int, cb func()) {
 	r.backchain(0, atoms, vars, level, 0, cb)
 }
 
+// Returns a textual representation of the rule.
 func (r *Rule) String() string {
 	s := ""
 	for _, t := range r.Ante {
@@ -160,19 +173,26 @@ func (r *Rule) String() string {
 	return s
 }
 
+// A term associated with a level.
 type TermLevel struct {
-	Term  *Term
+	// The term.
+	Term *Term
+	// The level.
 	Level int
 }
 
+// An atom set.
 type AtomSet struct {
+	// The atoms represented as a list of terms with levels.
 	Atoms []TermLevel
 }
 
+// Returns a new atom set.
 func NewAtomSet() *AtomSet {
 	return &AtomSet{}
 }
 
+// Adds a term with a level to the atom set.
 func (as *AtomSet) Add(t *Term, level int) {
 	for _, tl := range as.Atoms {
 		if t.String() == tl.Term.String() {
@@ -183,12 +203,14 @@ func (as *AtomSet) Add(t *Term, level int) {
 	as.Atoms = append(as.Atoms, TermLevel{t, level})
 }
 
+// Enumerates all terms in the atom set.
 func (as *AtomSet) Enumerate(cb func(*Term, int)) {
 	for _, tl := range as.Atoms {
 		cb(tl.Term, tl.Level)
 	}
 }
 
+// A textual representation of the atom set.
 func (as *AtomSet) String() string {
 	s := ""
 	as.Enumerate(func(t *Term, l int) {
@@ -197,21 +219,30 @@ func (as *AtomSet) String() string {
 	return s
 }
 
+// A term in consequents of abductive rules.
 type RuleConsTerm struct {
-	Term      *Term
+	// The term.
+	Term *Term
+	// Specifies whether the term is exclusive in the abductive process.
 	Exclusive bool
 }
 
+// Returns a textual representation of the term.
 func (t *RuleConsTerm) String() string {
 	return t.Term.String()
 }
 
+// A rule signature.
 type RuleSignature struct {
+	// The rule's ID.
 	RuleId string
-	Ante   []*Term
-	Cons   []*RuleConsTerm
+	// The antecedent.
+	Ante []*Term
+	// The consequent.
+	Cons []*RuleConsTerm
 }
 
+// Returns a new rule signature.
 func NewRuleSignature(id int, ante []*Term, cons []*RuleConsTerm) *RuleSignature {
 	return &RuleSignature{fmt.Sprintf("r%d", id), ante, cons}
 }
@@ -228,26 +259,35 @@ func (rs *RuleSignature) RuleString() string {
 	return s
 }
 
+// Returns a textual representation of the rule signature.
 func (rs *RuleSignature) String() string {
 	return rs.RuleId + ": " + rs.RuleString()
 }
 
+// An abductive proof graph.
 type ProofGraph struct {
-	Atoms        *AtomSet
+	// An atom set.
+	Atoms *AtomSet
+	// A list of observation.
 	Observations []*Term
-	Assumptions  []*Term
-	RuleSigs     []*RuleSignature
+	// A list of assumptions.
+	Assumptions []*Term
+	// A list of rule signatures.
+	RuleSigs []*RuleSignature
 }
 
+// Returns a new proof graph.
 func NewProofGraph() *ProofGraph {
 	return &ProofGraph{Atoms: NewAtomSet()}
 }
 
+// Adds an observation to the proof graph.
 func (pg *ProofGraph) AddObservation(t *Term) {
 	pg.Atoms.Add(t, 0)
 	pg.Observations = append(pg.Observations, t)
 }
 
+// Adds an assumption to the proof graph.
 func (pg *ProofGraph) AddAssumption(t *Term) {
 	pg.Atoms.Add(t, 0)
 	pg.Assumptions = append(pg.Assumptions, t)
@@ -255,6 +295,7 @@ func (pg *ProofGraph) AddAssumption(t *Term) {
 
 var varUid int
 
+// Closes the proof graph.
 func (pg *ProofGraph) Close(rules []*Rule) {
 	level, maxRuleId := 0, 0
 	augmented := true
@@ -332,6 +373,7 @@ func (m *Mapping) Add(atom string) {
 	}
 }
 
+// An effectively propositional abductive theory.
 type Theory struct {
 	Clauses [][]string
 }
@@ -366,6 +408,7 @@ func (pg *ProofGraph) IsAssumption(t *Term) bool {
 	return false
 }
 
+// Returns the corresponding effectively propositional abductive theory.
 func (pg *ProofGraph) Theory() *Theory {
 	var clauses [][]string
 	for _, a := range pg.Observations {
@@ -442,6 +485,7 @@ func (pg *ProofGraph) Theory() *Theory {
 // 	return lits
 // }
 
+// Solves the theory using a SAT solver.
 func (th *Theory) Solve(cb func([]string)) {
 	m := NewMapping()
 	for _, c := range th.Clauses {
